@@ -1,0 +1,128 @@
+Total hits(HP)by Friendly Name
+index=main source="hp_rum_metlife_dot_come_*14.csv" | eval date = "01-"+Month+"-2014" | eval date = strptime(date,"%d-%B-%Y") | eval _time = date | lookup btm_rum_page_to_url_mapping_lookup "HP Page Name" as "Page Name" output "HP URL" as URL "Friendly Name" as "Friendly Name" | bucket span=1mon _time | rename "Total Hits" as total_hits "Availability " as availability | convert num(total_hits) | stats sparkline(sum(total_hits)) as "Total Hits over Time(HP)" latest(total_hits) as "Total Hits (HP)" latest(availability) as Availability by "Friendly Name",URL | rex field=URL "^(?P<URL>[^\?\#]+)" | join "Friendly Name" URL [search index=main host="*gomez*" source="BTM_RUM_Metlife June14.csv" | rex field="Project_Page Name" "\((?P<URL>[^\)]+)\)" | lookup btm_rum_page_to_url_mapping_lookup "Gomez URL" as URL output "Friendly Name" | rex field="Total Page Views with Object Errors__ _" "/(?P<errors>.*)$" | rex field="Total Page Views with Object Errors__ _ " "/(?P<errors>.*)$" | stats latest("90th Percentile Perceived Render Time_sec") as "Perceived Render Time (90th Percentile)" latest(errors) as Errors latest("Total ") as "Total Hits(Gomez)"  by "Friendly Name",URL] | stats  sum("Total Hits (HP)") as "Total Hits-HP" by "Friendly Name"Availbility by Friendly Name	index=main source="hp_rum_metlife_dot_come_*14.csv" | eval date = "01-"+Month+"-2014" | eval date = strptime(date,"%d-%B-%Y") | eval _time = date | lookup btm_rum_page_to_url_mapping_lookup "HP Page Name" as "Page Name" output "HP URL" as URL "Friendly Name" as "Friendly Name" | bucket span=1mon _time | rename "Total Hits" as total_hits "Availability " as availability | convert num(total_hits) | stats sparkline(sum(total_hits)) as "Total Hits over Time(HP)" latest(total_hits) as "Total Hits (HP)" latest(availability) as Availability by "Friendly Name",URL | rex field=URL "^(?P<URL>[^\?\#]+)" | join "Friendly Name" URL [search index=main host="*gomez*" source="BTM_RUM_Metlife June14.csv" | rex field="Project_Page Name" "\((?P<URL>[^\)]+)\)" | lookup btm_rum_page_to_url_mapping_lookup "Gomez URL" as URL output "Friendly Name" | rex field="Total Page Views with Object Errors__ _" "/(?P<errors>.*)$" | rex field="Total Page Views with Object Errors__ _ " "/(?P<errors>.*)$" | stats latest("90th Percentile Perceived Render Time_sec") as "Perceived Render Time (90th Percentile)" latest(errors) as Errors latest("Total ") as "Total Hits(Gomez)"  by "Friendly Name",URL] | stats  min(Availability) as Availability by "Friendly Name"
+
+Customer Journey Resp. Time Increase SLA Violations - EService November
+
+source="HP_RUM_Eservice_*.csv" earliest=-2mon | lookup Customer_journey_eservice_lookup.csv "HP Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" | eval sla_name_col=tostring("monthly_rst_reduction") | eval Month=strftime(_time,"%b") | lookup btm_sla.csv SLA_NAME as sla_name_col OUTPUT "VALUE" as sla_value | chart avg("Page Time _sec") by Transaction, Month | convert num("Dec") as dec_res num("Nov") as nov_res | eval rs_diff = (((dec_res / nov_res) * 100) - 100) | table Transaction rs_diff | where rs_diff >= 25 | sort rs_diff d | rename rs_diff as "RS % inc."
+
+Customer Journey Resp. Time Increase SLA Violations - EService November
+
+source="HP_RUM_Eservice_*.csv" earliest=-2mon | lookup Customer_journey_eservice_lookup.csv "HP Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" | eval sla_name_col=tostring("monthly_rst_reduction") | eval Month=strftime(_time,"%b") | lookup btm_sla.csv SLA_NAME as sla_name_col OUTPUT "VALUE" as sla_value | chart avg("Page Time _sec") by Transaction, Month | convert num("Dec") as dec_res num("Nov") as nov_res | eval rs_diff = (((dec_res / nov_res) * 100) - 100) | table Transaction rs_diff | where rs_diff >= 25 | sort rs_diff d | rename rs_diff as "RS % inc."
+
+Customer Journey Success Rate Reduction SLA Violations - EService November
+
+source="HP_RUM_Eservice_*.csv" earliest=-2mon | lookup Customer_journey_eservice_lookup.csv "HP Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" | eval sla_name_col=tostring("monthly_success_reduction") | eval Month=strftime(_time,"%b") | lookup btm_sla.csv SLA_NAME as sla_name_col OUTPUT "VALUE" as sla_value | chart avg("Availability ") by Transaction, Month | convert num("Dec") as dec_res num("Nov") as nov_res | eval rs_diff = (((dec_res / nov_res) * 100) - 100) | table Transaction rs_diff | where rs_diff <= -0.5 | sort rs_diff d | rename rs_diff as "Success Rate % dec."
+
+Customer Journey-GSP November
+
+source="HP_RUM_GSP_November.csv"  | lookup customer_journey_gsp.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction,"Serial Number" | stats latest("Availability ") as "Success Rate (%)" latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "Response Time (Secs)" latest("Total Hits") as "Count"  by Transaction, "Serial Number" | sort "Serial Number"| convert num("Total Hits") num("Slow Hits") num("Number of Errors") | table "Transaction" "Success Rate (%)" "Response Time (Secs)" "Count" | sort "Serial Number"
+
+Customer Journey-eService November
+
+source="HP_RUM_Eservice_November.csv" | lookup Customer_journey_eservice_lookup.csv "HP Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" | stats latest("Availability ") as "Success Rate (%)" latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "Response Time (Secs)" latest("Total Hits") as "Count"  by Transaction, "Serial Number" |  sort "Serial Number"| convert num("Total Hits") num("Number of Failed") | table "Transaction" "Success Rate (%)" "Response Time (Secs)" "Count"
+
+
+Customer Journey-MetOnline November
+
+source="HP_RUM_Metonline_November.csv" 
+| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| stats latest("Availability ") as "SuccessRate" latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" |sort "Serial Number"
+| table "Transaction" "Success Rate (%)" "Response Time (Secs)" "Count"  
+
+
+|appendcols [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="Login Start" OR Transaction="Login Result  Success" OR Transaction="Login Start 1" OR Transaction="Login Start 2" 
+OR Transaction="Login Uieot" OR Transaction="Login Uittf" OR Transaction="Login UIwoff" 
+| eval Transaction="Login Start" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction  
+
+
+| append [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="Login Start" OR Transaction="Login Result  Success" OR Transaction="Login Start 1" OR Transaction="Login Start 2" 
+OR Transaction="Login Uieot" OR Transaction="Login Uittf" OR Transaction="Login UIwoff" 
+| eval Transaction="Login Result Success" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction
+] 
+
+
+| append [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="Login Start" OR Transaction="Login Result wrong username | pwd" OR Transaction="Login Start 1" OR Transaction="Login Start 2" 
+OR Transaction="Login Uieot" OR Transaction="Login Uittf" OR Transaction="Login UIwoff"
+| eval Transaction="Login Result wrong username | pwd" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction  
+] 
+
+
+| append [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="View/ Update Account Profile" OR Transaction="View/ Update Account Profile 1" OR Transaction="View/ Update Account Profile 2" 
+| eval Transaction="View/ Update Account Profile 1" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction
+]
+
+| append [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="View Policy/ Holdings" OR Transaction="Ce Service Deep Link" OR Transaction="e Service Deep Link" OR Transaction="Check Member" 
+OR Transaction="Get Holdings" OR Transaction="Request Holdings" 
+| eval Transaction="View Policy/ Holdings" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction
+]
+
+
+| append [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="Register For Online Access" OR Transaction="Register For Online Access 1" 
+| eval Transaction="Register For Online Access" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction
+]
+
+
+| append [search source="HP_RUM_Metonline_November.csv"| lookup customer_journey_metonline_new.csv "Page Name" as "Page Name" output "Customer Journey Name" as Transaction "Serial Number" 
+| search Transaction="View Product Detail" 
+| eval Transaction="View Product Detail" 
+| stats latest("Availability ") as "SuccessRate"  latest(HTTP_br__Errors) as "Number of Failed" latest("Page Time _sec") as "ResponseTime" latest("Total Hits") as "Count"  by Transaction, "Serial Number" 
+| stats sum("ResponseTime") as SUM , min(SuccessRate) as MIN by Transaction
+]
+
+]
+
+| eval "ResponseTime"=if(like(Transaction, "%Login%"),SUM,ResponseTime)
+| eval "ResponseTime"=if(like(Transaction, "%View/ Update Account Profile 1%"),SUM,ResponseTime)
+| eval "ResponseTime"=if(like(Transaction, "%View Policy/ Holdings%"),SUM,ResponseTime)
+| eval "ResponseTime"=if(like(Transaction, "%Register For Online Access%"),SUM,ResponseTime)
+| eval "ResponseTime"=if(like(Transaction, "%View Product Detail%"),SUM,ResponseTime)
+
+| eval "SuccessRate"=if(like(Transaction, "%Login%"),MIN,SuccessRate)
+| eval "SuccessRate"=if(like(Transaction, "%View/ Update Account Profile 1%"),MIN,SuccessRate)
+| eval "SuccessRate"=if(like(Transaction, "%View Policy/ Holdings%"),MIN,SuccessRate)
+| eval "SuccessRate"=if(like(Transaction, "%Register For Online Access%"),MIN,SuccessRate)
+| eval "SuccessRate"=if(like(Transaction, "%View Product Detail%"),MIN,SuccessRate)
+
+
+| search NOT Transaction="Login Start"
+| search NOT Transaction="Login Start 1"
+| search NOT Transaction="Login Start 2"
+| search NOT Transaction="View/ Update Account Profile"
+| search NOT Transaction="View/ Update Account Profile 2"
+| search NOT Transaction="Register For Online Access 1"
+| search NOT Transaction="Request Holdings"
+| search NOT Transaction="Login Uieot"
+| search NOT Transaction="Login Uittf"
+| search NOT Transaction="Login UIwoff"
+| search NOT Transaction="Get Holdings"
+| search NOT Transaction="Check Member"
+| search NOT Transaction="e Service Deep Link"
+| search NOT Transaction="Ce Service Deep Link"
+
+| replace "Login Result  Success" with "Login" in Transaction
+| replace "View/ Update Account Profile 1" with "View/ Update Account Profile" in Transaction
+| rename SuccessRate as "Success Rate (%)"
+| rename ResponseTime as "Response Time (Secs)"
+| table "Transaction" "Success Rate (%)" "Response Time (Secs)" "Count"
+
+Customer Journey metlife shopping November
+
+index=main source="HP_RUM_Metlife.com_November.csv" | eval date = "01-"+Month+"-2014" | eval date = strptime(date,"%d-%B-%Y") | eval _time = date | lookup customer_journey_btm_lookup.csv "HP Page Name" as "Page Name"  output "HP URL" as URL "Customer Journey Name" as Transaction "Serial Number" as Number | bucket span=1mon _time | rename "Availability " as availability | stats min(availability) as "Success Rate (%)" by Transaction, Number | join Transaction [search index=main host="*gomez*" source="BTM_RUM_Metlife.com_Gomez_November.csv" | rex field="Project_Page Name" "\((?P<URL>[^\)]+)\)" | lookup customer_journey_btm_lookup.csv "Gomez URL" as URL output "Customer Journey Name" as Transaction "Serial Number" as Number | rex field="Total Page Views with Object Errors__ _ " "/(?P<errors>.*)%$" | stats latest("Avg Perceived Render Time_sec") as "Response Time (Secs)" latest(errors) as "Success with Errors (%)" latest("Total ") as "Count" by Transaction, Number ] | sort "Number"| table "Transaction" "Success Rate (%)" "Response Time (Secs)" "Count"
